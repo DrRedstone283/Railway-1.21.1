@@ -449,6 +449,71 @@ public class TrackCouplerBlockEntity extends SmartBlockEntity implements Transfo
         return OperationInfo.NONE;
     }
 
+    @Nullable
+private Train getValidatedCurrentTrain(
+        @Nullable TrackCoupler coupler,
+        @Nullable TrackTargetingBehaviour<TrackCoupler> edgePoint) {
+
+    if (coupler == null || edgePoint == null || level == null || level.isClientSide())
+        return null;
+
+    UUID currentTrainId = coupler.getCurrentTrain();
+
+    if (currentTrainId == null)
+        return null;
+
+    Train currentTrain = Create.RAILWAYS.trains.get(currentTrainId);
+
+    if (currentTrain == null)
+        return null;
+
+    TrackGraphLocation location;
+
+    try {
+        location = edgePoint.determineGraphLocation();
+    } catch (ClassCastException e) {
+        return null;
+    }
+
+    if (location == null || location.graph == null)
+        return null;
+
+    /*
+     * The UUID stored in the coupler is only a cached reference.
+     * After splitting or combining trains, that reference may no longer
+     * represent the train that is physically occupying the coupler.
+     *
+     * Verify the cached train against the actual carriage position first.
+     */
+    if (currentTrain.graph == location.graph &&
+            (getCarriageOnPoint(currentTrain, coupler, edgePoint, true) != null ||
+             getCarriageOnPoint(currentTrain, coupler, edgePoint, false) != null)) {
+        return currentTrain;
+    }
+
+    /*
+     * The cached train is stale. Find the train that is actually
+     * occupying this coupler.
+     */
+    for (Train train : Create.RAILWAYS.trains.values()) {
+        if (train.graph != location.graph)
+            continue;
+
+        if (getCarriageOnPoint(train, coupler, edgePoint, true) != null ||
+                getCarriageOnPoint(train, coupler, edgePoint, false) != null) {
+
+            ((IOccupiedCouplers) train)
+                    .railways$getOccupiedCouplers()
+                    .add(coupler.getId());
+
+            coupler.keepAlive(train);
+            return train;
+        }
+    }
+
+    return null;
+}
+
     private void refreshCouplerActivation(@Nullable TrackCoupler coupler, TrackTargetingBehaviour<TrackCoupler> edgePoint) {
         if (coupler == null || edgePoint == null || level == null || level.isClientSide() || coupler.isActivated())
             return;
