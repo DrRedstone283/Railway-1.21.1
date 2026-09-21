@@ -396,8 +396,8 @@ public class TrackCouplerBlockEntity extends SmartBlockEntity implements Transfo
             refreshCouplerActivation(coupler2, edgePoint2);
         }
         if (coupler1 != null && coupler2 != null && coupler1.isActivated() && coupler2.isActivated()) {
-            Train primaryTrain = Create.RAILWAYS.trains.get(coupler1.getCurrentTrain());
-            Train secondaryTrain = Create.RAILWAYS.trains.get(coupler2.getCurrentTrain());
+            Train primaryTrain = getValidatedCurrentTrain(coupler1, edgePoint1);
+            Train secondaryTrain = getValidatedCurrentTrain(coupler2, edgePoint2);
             if (primaryTrain != null && primaryTrain == secondaryTrain) {
                 //Decoupling, if back wheels of a carriage are on the secondary coupler and the front wheels of the carriage behind it are on the primary coupler
                 Carriage frontCarriage = getCarriageOnPoint(primaryTrain, coupler2, edgePoint2, false);
